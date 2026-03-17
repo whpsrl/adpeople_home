@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sparkles, ArrowRight, Target, MonitorPlay, Zap, CheckCircle2, Settings, X, Save } from "lucide-react";
+import { Sparkles, ArrowRight, Target, MonitorPlay, Zap, CheckCircle2, Settings, X, Save, HelpCircle, Key, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -19,8 +20,8 @@ export default function Home() {
   const [result, setResult] = useState<any>(null);
   const [isPublishing, setIsPublishing] = useState(false);
 
-  // Modello dei profili Meta
-  type MetaProfile = {
+  // Modello dei profili Clienti completi
+  type ClientProfile = {
     id: string;
     name: string;
     appId: string;
@@ -28,36 +29,44 @@ export default function Home() {
     token: string;
     adAccountId: string;
     pageId: string;
+    openAiKey: string; // Ogni cliente ha la propria chiave OpenAI se usiamo l'Agente come SaaS
   };
 
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
-  const [profiles, setProfiles] = useState<MetaProfile[]>([]);
+  const [profiles, setProfiles] = useState<ClientProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string>("");
+  const [openAiKey, setOpenAiKey] = useState("");
   
   // State per il form di editing (profilo correntemente selezionato o nuovo)
-  const [editingProfile, setEditingProfile] = useState<MetaProfile>({
+  const [editingProfile, setEditingProfile] = useState<ClientProfile>({
     id: "new",
     name: "",
     appId: "",
     appSecret: "",
     token: "",
     adAccountId: "",
-    pageId: ""
+    pageId: "",
+    openAiKey: ""
   });
 
   // Load settings on mount
   useEffect(() => {
     const savedProfiles = localStorage.getItem("metaProfiles");
     const savedActiveId = localStorage.getItem("metaActiveProfileId");
+    const savedOpenAiKey = localStorage.getItem("openAiApiKey");
+
+    if (savedOpenAiKey) {
+      setOpenAiKey(savedOpenAiKey);
+    }
 
     if (savedProfiles) {
       try {
         const parsed = JSON.parse(savedProfiles);
         setProfiles(parsed);
-        if (savedActiveId && parsed.find((p: MetaProfile) => p.id === savedActiveId)) {
+        if (savedActiveId && parsed.find((p: ClientProfile) => p.id === savedActiveId)) {
           setActiveProfileId(savedActiveId);
-          setEditingProfile(parsed.find((p: MetaProfile) => p.id === savedActiveId));
+          setEditingProfile(parsed.find((p: ClientProfile) => p.id === savedActiveId));
         } else if (parsed.length > 0) {
           setActiveProfileId(parsed[0].id);
           setEditingProfile(parsed[0]);
@@ -77,7 +86,8 @@ export default function Home() {
         appSecret: "",
         token: "",
         adAccountId: "",
-        pageId: ""
+        pageId: "",
+        openAiKey: "" // reset per un nuovo cliente
       });
     } else {
       const selected = profiles.find(p => p.id === id);
@@ -114,9 +124,10 @@ export default function Home() {
 
     localStorage.setItem("metaProfiles", JSON.stringify(updatedProfiles));
     localStorage.setItem("metaActiveProfileId", newId);
+    localStorage.setItem("openAiApiKey", openAiKey); // Salviamo anche la chiave di openAi a livello globale
     
     setShowSettings(false);
-    alert("Profilo Meta salvato correttamente!");
+    alert("Impostazioni salvate correttamente!");
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,10 +150,19 @@ export default function Home() {
     setResult(null);
     
     try {
+      // Usiamo una chiamata fetch e passiamo la chiave se disponibile nel profilo, o un fallback
+      const activeProfile = profiles.find(p => p.id === activeProfileId);
+      const reqBody = { 
+        url, 
+        budget, 
+        goal,
+        openAiKey: activeProfile?.openAiKey // Passa la chiave del cliente se salvata
+      };
+
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, budget, goal })
+        body: JSON.stringify(reqBody)
       });
       
       const data = await response.json();
@@ -187,7 +207,7 @@ export default function Home() {
       const formData = new FormData();
       formData.append("strategy", JSON.stringify(result));
       formData.append("metaConfig", JSON.stringify(activeProfile));
-      formData.append("url分析", url); // URL originale analizzato
+      formData.append("urlanalisi", url); // URL originale analizzato
       formData.append("urlDestination", urlDestination || url); // Se non inserito, usa l'URL analizzato
       formData.append("ctaType", ctaType);
       formData.append("creativeMode", creativeMode);
@@ -214,6 +234,27 @@ export default function Home() {
     }
   };
 
+  const HelpTooltip = ({ text }: { text: string }) => (
+    <Tooltip.Provider delayDuration={200}>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <button type="button" className="text-slate-500 hover:text-indigo-400 focus:outline-none ml-2 inline-flex align-middle">
+            <HelpCircle size={14} />
+          </button>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content 
+            className="bg-slate-800 text-slate-200 text-xs px-3 py-2 rounded shadow-xl max-w-xs leading-relaxed z-[100] border border-slate-700" 
+            sideOffset={5}
+          >
+            {text}
+            <Tooltip.Arrow className="fill-slate-800" />
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </Tooltip.Provider>
+  );
+
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-start py-8 px-6 sm:px-12 md:px-24 overflow-hidden">
       <div className="glow-bg"></div>
@@ -225,7 +266,7 @@ export default function Home() {
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/50 border border-slate-700/50 hover:bg-slate-800 transition-all text-sm font-medium text-slate-300"
         >
           <Settings size={18} />
-          Impostazioni Meta
+          Impostazioni Profilo/API
         </button>
       </div>
 
@@ -236,13 +277,13 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
           >
             <motion.div 
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative"
+              className="bg-slate-900 border border-slate-700 w-full max-w-xl rounded-2xl p-6 shadow-2xl relative my-8"
             >
               <button 
                 onClick={() => setShowSettings(false)}
@@ -252,11 +293,47 @@ export default function Home() {
               </button>
               
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Settings className="text-indigo-400" />
-                Profili Meta API
+                <Users className="text-indigo-400" />
+                Gestione Clienti e Chiavi
+              </h2>
+              <p className="text-sm text-slate-400 mb-6">
+                Salva i profili dei tuoi clienti. In futuro ogni cliente avrà il suo database dedicato e il bottone "Accedi con Facebook".
+              </p>
+
+              {/* GLOBAL AI SETTINGS */}
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <Key className="text-emerald-400" />
+                Chiave OpenAI (Universale)
               </h2>
               <p className="text-sm text-slate-400 mb-4">
-                Salva diverse chiavi per gestire gli account di più clienti separatamente.
+                Necessaria per far funzionare l'Agente IA Strategico e far generare le immagini a DALL-E 3.
+              </p>
+              
+              <div className="mb-8 border-b border-slate-800 pb-6">
+                <label className="text-sm font-medium text-slate-300 mb-1 flex items-center">
+                  OpenAI API Key
+                  <HelpTooltip text="La trovi su platform.openai.com. Inizia con 'sk-...'. Serve a pagare i centesimi della generazione testo/immagini all'IA." />
+                </label>
+                <input 
+                  type="password" 
+                  value={openAiKey}
+                  onChange={(e) => setOpenAiKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-emerald-500 outline-none mt-1"
+                />
+              </div>
+
+              {/* META PROFILES */}
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <Target className="text-indigo-400" />
+                Profili Clienti Meta
+              </h2>
+              <p className="text-sm text-slate-400 mb-4">
+                Seleziona o crea un profilo per l'invio diretto a Facebook Ads.
+                {/* Future Proofing Token Alert */}
+                <span className="block mt-2 text-xs text-indigo-300 bg-indigo-500/10 p-2 rounded">
+                  In futuro potrai connettere le pagine semplicemente cliccando "Accedi con Facebook". Nel frattempo usiamo le chiavi da sviluppatore. 
+                </span>
               </p>
 
               <div className="mb-6">
@@ -274,55 +351,99 @@ export default function Home() {
               </div>
 
               <div className="space-y-4 border-t border-slate-800 pt-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Nome Profilo / Cliente</label>
-                  <input 
-                    type="text" 
-                    value={editingProfile.name}
-                    onChange={(e) => setEditingProfile({...editingProfile, name: e.target.value})}
-                    placeholder="es. Bar Mario Srl"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Meta App ID</label>
-                  <input 
-                    type="text" 
-                    value={editingProfile.appId}
-                    onChange={(e) => setEditingProfile({...editingProfile, appId: e.target.value})}
-                    placeholder="es. 1029384756"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">App Secret</label>
-                  <input 
-                    type="password" 
-                    value={editingProfile.appSecret}
-                    onChange={(e) => setEditingProfile({...editingProfile, appSecret: e.target.value})}
-                    placeholder="Il tuo App Secret"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Access Token (Long Lived)</label>
-                  <input 
-                    type="password" 
-                    value={editingProfile.token}
-                    onChange={(e) => setEditingProfile({...editingProfile, token: e.target.value})}
-                    placeholder="EAAI..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Account Pubblicitario ID (senza 'act_')</label>
-                  <input 
-                    type="text" 
-                    value={editingProfile.adAccountId}
-                    onChange={(e) => setEditingProfile({...editingProfile, adAccountId: e.target.value.replace('act_', '')})}
-                    placeholder="es. 1234567890123"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-300 mb-1 flex items-center">
+                      Nome Cliente 
+                    </label>
+                    <input 
+                      type="text" 
+                      value={editingProfile.name}
+                      onChange={(e) => setEditingProfile({...editingProfile, name: e.target.value})}
+                      placeholder="es. Bar Mario Srl"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                    <label className="text-sm font-medium text-slate-300 mb-1 flex items-center">
+                      Meta App ID
+                      <HelpTooltip text="Crea un'app Business su developers.facebook.com per ottenere questo ID numerico." />
+                    </label>
+                    <input 
+                      type="text" 
+                      value={editingProfile.appId}
+                      onChange={(e) => setEditingProfile({...editingProfile, appId: e.target.value})}
+                      placeholder="es. 1029384756"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                    <label className="text-sm font-medium text-slate-300 mb-1 flex items-center">
+                      App Secret
+                      <HelpTooltip text="Lo trovi nelle Impostazioni Base dell'App su Facebook. Serve a validare l'uso delle API." />
+                    </label>
+                    <input 
+                      type="password" 
+                      value={editingProfile.appSecret}
+                      onChange={(e) => setEditingProfile({...editingProfile, appSecret: e.target.value})}
+                      placeholder="Il tuo App Secret"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-slate-300 mb-1 flex items-center">
+                      Access Token (Lunga durata)
+                      <HelpTooltip text="Chiave EAAI... generata nell'Explorer o Users di Sistema del Business Manager che permette di bypassare il click di login utente durante questi test." />
+                    </label>
+                    <input 
+                      type="password" 
+                      value={editingProfile.token}
+                      onChange={(e) => setEditingProfile({...editingProfile, token: e.target.value})}
+                      placeholder="EAAI..."
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                    <label className="text-sm font-medium text-slate-300 mb-1 flex items-center">
+                      Ad Account ID
+                      <HelpTooltip text="L'insegna ID numerica del portafoglio clienti. Rimuovi categoricamente il prefisso 'act_' iniziale!" />
+                    </label>
+                    <input 
+                      type="text" 
+                      value={editingProfile.adAccountId}
+                      onChange={(e) => setEditingProfile({...editingProfile, adAccountId: e.target.value.replace('act_', '')})}
+                      placeholder="es. 1234567890123"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                    <label className="text-sm font-medium text-slate-300 mb-1 flex items-center">
+                      Facebook Page ID
+                      <HelpTooltip text="L'identificativo numerico della Pagina Facebook collegata al Brand da cui parte l'annuncio." />
+                    </label>
+                    <input 
+                      type="text" 
+                      value={editingProfile.pageId || ""}
+                      onChange={(e) => setEditingProfile({...editingProfile, pageId: e.target.value})}
+                      placeholder="es. 987654321"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-2 pt-2 border-t border-slate-800 mt-2">
+                    <label className="text-sm font-medium flex items-center text-emerald-400 mb-1">
+                      <Key size={14} className="mr-1" />
+                      OpenAI API Key (Client-Specific)
+                      <HelpTooltip text="Se inserisci qui un token sk-..., i costi AI per questo cliente verranno pagati con il suo account OpenAI anziché con la tua master key globale." />
+                    </label>
+                    <input 
+                      type="password" 
+                      value={editingProfile.openAiKey || ""}
+                      onChange={(e) => setEditingProfile({...editingProfile, openAiKey: e.target.value})}
+                      placeholder="sk-..."
+                      className="w-full bg-slate-950 border border-emerald-900/40 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
                 </div>
 
                 <button 

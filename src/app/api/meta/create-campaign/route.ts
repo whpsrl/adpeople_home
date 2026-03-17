@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import axios from "axios";
 import FormDataNode from "form-data";
-import { openai } from '@ai-sdk/openai';
+import { createOpenAI } from '@ai-sdk/openai';
 import { generateImage } from 'ai';
 
 export async function POST(req: Request) {
@@ -59,10 +59,15 @@ export async function POST(req: Request) {
     } 
     // CASO 2: GENERAZIONE AI TRAMITE DALL-E 3
     else if (creativeMode === "ai") {
+      // Costruisci il client OpenAI dinamico basato sulla chiave passata dal profilo meta (o usa process.env se non c'è, sebbene l'utente dovrebbe fornirla)
+      const openaiClient = createOpenAI({
+        apiKey: metaConfig.openAiKey || process.env.OPENAI_API_KEY,
+      });
+
       const promptToGenerate = `Create a highly professional, visually appealing meta ad image for a product. Concept based on this headline: "${strategy.copy.headline}". Make it persuasive, dynamic, and realistic, avoiding any text in the image.`;
       
       const { image } = await generateImage({
-        model: openai.image('dall-e-3'),
+        model: openaiClient.image('dall-e-3'),
         prompt: promptToGenerate,
         size: '1024x1024'
       });
