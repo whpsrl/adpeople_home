@@ -10,6 +10,7 @@ export default function Home() {
   const [goal, setGoal] = useState("conversion");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // Modello dei profili Meta
   type MetaProfile = {
@@ -122,7 +123,8 @@ export default function Home() {
       
       const data = await response.json();
       if(data.success) {
-        setResult(data.strategy);
+        // Uniamo il budget alla risposta strategica per passarlo a Meta dopo
+        setResult({ ...data.strategy, budget: parseInt(budget) });
       } else {
         alert("Errore nell'analisi.");
       }
@@ -130,6 +132,40 @@ export default function Home() {
       alert("Errore di connessione al server.");
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handlePublishMeta = async () => {
+    if (!activeProfileId || activeProfileId === "new") {
+      alert("Seleziona prima un Profilo Meta valido dalle Impostazioni!");
+      setShowSettings(true);
+      return;
+    }
+
+    const activeProfile = profiles.find(p => p.id === activeProfileId);
+    
+    setIsPublishing(true);
+    try {
+      const response = await fetch("/api/meta/create-campaign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          strategy: result,
+          metaConfig: activeProfile,
+          url: url
+        })
+      });
+      
+      const data = await response.json();
+      if(data.success) {
+        alert(`🎉 Successo! ${data.message}\nCampaign ID: ${data.data.campaignId}`);
+      } else {
+        alert(`❌ Errore Meta: ${data.error}`);
+      }
+    } catch (error) {
+      alert("Errore di connessione al server durante la pubblicazione.");
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -455,12 +491,21 @@ export default function Home() {
                 
                 {/* Bottone Posta su Meta */}
                 <button 
-                  onClick={() => alert("Funzione Meta API in fase di sviluppo!")}
-                  className="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl px-4 py-3 transition-all flex items-center justify-center gap-2 group shadow-xl"
+                  onClick={handlePublishMeta}
+                  disabled={isPublishing}
+                  className="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl px-4 py-3 transition-all flex items-center justify-center gap-2 group shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  <Target size={20} />
-                  Crea Campagna Bozza su Meta Ads
-                  <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+                  {isPublishing ? (
+                     <>
+                        <Zap className="animate-pulse" size={20} /> Creazione Campagna su Meta...
+                     </>
+                  ) : (
+                     <>
+                        <Target size={20} />
+                        Crea Campagna Bozza su Meta Ads
+                        <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+                     </>
+                  )}
                 </button>
               </motion.div>
             )}
