@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateObject } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { openai, createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
 
 export async function POST(req: Request) {
@@ -12,10 +12,7 @@ export async function POST(req: Request) {
     }
 
     // Inizializza il client dinamicamente con la chiave cliente (se fornita), oppure col fallback globale env
-    const openaiClient = openai; // Sostituiremo usando il client locale configurato
     const apiKeyToUse = openAiKey || process.env.OPENAI_API_KEY;
-
-    import { createOpenAI } from '@ai-sdk/openai';
     
     const client = createOpenAI({
       apiKey: apiKeyToUse
