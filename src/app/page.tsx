@@ -8,6 +8,13 @@ export default function Home() {
   const [url, setUrl] = useState("");
   const [budget, setBudget] = useState("");
   const [goal, setGoal] = useState("conversion");
+  const [urlDestination, setUrlDestination] = useState("");
+  const [ctaType, setCtaType] = useState("LEARN_MORE");
+  
+  const [creativeMode, setCreativeMode] = useState<"upload" | "ai">("upload");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -20,6 +27,7 @@ export default function Home() {
     appSecret: string;
     token: string;
     adAccountId: string;
+    pageId: string;
   };
 
   // Settings State
@@ -34,7 +42,8 @@ export default function Home() {
     appId: "",
     appSecret: "",
     token: "",
-    adAccountId: ""
+    adAccountId: "",
+    pageId: ""
   });
 
   // Load settings on mount
@@ -67,7 +76,8 @@ export default function Home() {
         appId: "",
         appSecret: "",
         token: "",
-        adAccountId: ""
+        adAccountId: "",
+        pageId: ""
       });
     } else {
       const selected = profiles.find(p => p.id === id);
@@ -109,8 +119,22 @@ export default function Home() {
     alert("Profilo Meta salvato correttamente!");
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedImage(file);
+      // Creiamo un URL locale per visualizzare l'anteprima
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (creativeMode === "upload" && !selectedImage) {
+      alert("Carica un'immagine o scegli la generazione AI prima di procedere!");
+      return;
+    }
+
     setIsAnalyzing(true);
     setResult(null);
     
@@ -123,8 +147,16 @@ export default function Home() {
       
       const data = await response.json();
       if(data.success) {
-        // Uniamo il budget alla risposta strategica per passarlo a Meta dopo
-        setResult({ ...data.strategy, budget: parseInt(budget) });
+        // Uniamo i dati: budget + opzione creatività
+        // In futuro, se "ai", qui chiameremo un'altra API per DALL-E prima di salvare setResult.
+        setResult({ 
+          ...data.strategy, 
+          budget: parseInt(budget),
+          creative: {
+            mode: creativeMode,
+            localImage: imagePreview
+          }
+        });
       } else {
         alert("Errore nell'analisi.");
       }
@@ -144,16 +176,29 @@ export default function Home() {
 
     const activeProfile = profiles.find(p => p.id === activeProfileId);
     
+    if (!activeProfile?.pageId) {
+      alert("Per creare un'inserzione è necessario avere la 'Facebook Page ID' compilata nelle Impostazioni del Profilo Meta.");
+      setShowSettings(true);
+      return;
+    }
+    
     setIsPublishing(true);
     try {
+      const formData = new FormData();
+      formData.append("strategy", JSON.stringify(result));
+      formData.append("metaConfig", JSON.stringify(activeProfile));
+      formData.append("url分析", url); // URL originale analizzato
+      formData.append("urlDestination", urlDestination || url); // Se non inserito, usa l'URL analizzato
+      formData.append("ctaType", ctaType);
+      formData.append("creativeMode", creativeMode);
+      
+      if (creativeMode === "upload" && selectedImage) {
+        formData.append("file", selectedImage);
+      }
+
       const response = await fetch("/api/meta/create-campaign", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          strategy: result,
-          metaConfig: activeProfile,
-          url: url
-        })
+        body: formData // non specifichiamo il content type, lo fa il browser in automatico per form-data
       });
       
       const data = await response.json();
@@ -352,7 +397,7 @@ export default function Home() {
                   value={budget}
                   onChange={(e) => setBudget(e.target.value)}
                   placeholder="es. 50"
-                  className="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                  className="w-full bg-slate-950 border border-slate-700/50 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                 />
               </div>
               <div className="flex-1">
@@ -362,7 +407,7 @@ export default function Home() {
                 <select 
                   value={goal}
                   onChange={(e) => setGoal(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all pr-8 [&>option]:bg-slate-900"
+                  className="w-full bg-slate-950 border border-slate-700/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all pr-8 [&>option]:bg-slate-900"
                 >
                   <option value="conversion">Acquisti (E-commerce)</option>
                   <option value="lead">Generazione Contatti (Lead)</option>
@@ -370,6 +415,118 @@ export default function Home() {
                   <option value="engagement">Interazioni / Messaggi</option>
                 </select>
               </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-6 mt-6">
+               <div className="flex-1">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  URL del Funnel (Destinazione Finale)
+                </label>
+                <input 
+                  type="url" 
+                  value={urlDestination}
+                  onChange={(e) => setUrlDestination(e.target.value)}
+                  placeholder="Lascia vuoto per usare lo stesso URL in alto"
+                  className="w-full bg-slate-950 border border-slate-700/50 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-sm"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Pulsante Azione (CTA)
+                </label>
+                <select 
+                  value={ctaType}
+                  onChange={(e) => setCtaType(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all pr-8 [&>option]:bg-slate-900"
+                >
+                  <option value="LEARN_MORE">Scopri di più</option>
+                  <option value="SHOP_NOW">Acquista ora</option>
+                  <option value="SIGN_UP">Iscriviti</option>
+                  <option value="DOWNLOAD">Scarica</option>
+                  <option value="CONTACT_US">Contattaci</option>
+                  <option value="APPLY_NOW">Candidati ora</option>
+                </select>
+              </div>
+            </div>
+
+            {/* SEZIONE CREATIVITÀ */}
+            <div className="border-t border-slate-800 pt-6 mt-2">
+              <label className="block text-sm font-medium text-slate-300 mb-4 flex items-center gap-2">
+                <Sparkles size={16} className="text-indigo-400" />
+                Materiale Creativo dell'Inserzione
+              </label>
+              
+              <div className="flex bg-slate-950 rounded-xl p-1 mb-4 border border-slate-800 w-full sm:w-fit">
+                <button
+                  type="button"
+                  onClick={() => setCreativeMode("upload")}
+                  className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    creativeMode === "upload" 
+                      ? "bg-indigo-600 text-white shadow-md" 
+                      : "text-slate-400 hover:text-white hover:bg-slate-900"
+                  }`}
+                >
+                  Carica Immagine
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCreativeMode("ai")}
+                  className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    creativeMode === "ai" 
+                      ? "bg-fuchsia-600 text-white shadow-md" 
+                      : "text-slate-400 hover:text-white hover:bg-slate-900"
+                  }`}
+                >
+                  Genera con IA
+                </button>
+              </div>
+
+              {creativeMode === "upload" ? (
+                <div className="border-2 border-dashed border-slate-700/80 rounded-xl p-6 text-center hover:bg-slate-900/40 hover:border-indigo-500/50 transition-colors relative">
+                  {!imagePreview ? (
+                    <>
+                      <MonitorPlay className="mx-auto text-slate-500 mb-3" size={32} />
+                      <p className="text-sm text-slate-400 mb-1">Trascina un'immagine o video oppure clicca per caricare</p>
+                      <p className="text-xs text-slate-500">Formati supportati: JPG, PNG, MP4, MOV (Max 50MB)</p>
+                      <input 
+                        type="file" 
+                        accept="image/*,video/mp4,video/quicktime"
+                        onChange={handleImageUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                    </>
+                  ) : (
+                    <div className="relative w-full h-48 rounded-lg overflow-hidden group bg-slate-900 flex justify-center items-center">
+                      {selectedImage?.type.startsWith("video/") ? (
+                         // eslint-disable-next-line jsx-a11y/media-has-caption
+                         <video src={imagePreview} className="w-full h-full object-cover" autoPlay muted loop />
+                      ) : (
+                         /* eslint-disable-next-line @next/next/no-img-element */
+                         <img src={imagePreview} alt="Preview" className="w-full h-full object-contain" />
+                      )}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <p className="text-white text-sm font-medium">Clicca per cambiare file</p>
+                      </div>
+                      <input 
+                        type="file" 
+                        accept="image/*,video/mp4,video/quicktime"
+                        onChange={handleImageUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-fuchsia-500/10 border border-fuchsia-500/20 rounded-xl p-4 flex gap-4 items-start">
+                  <Sparkles className="text-fuchsia-400 shrink-0 mt-1" size={20} />
+                  <div>
+                     <p className="text-sm font-medium text-fuchsia-100 mb-1">Creazione Automatica (DALL-E 3)</p>
+                     <p className="text-xs text-fuchsia-200/70">
+                       L'Agente leggerà la tua strategia e disegnerà un'immagine perfetta per massimizzare le conversioni su Meta. 
+                     </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <button 
