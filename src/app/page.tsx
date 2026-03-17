@@ -498,10 +498,11 @@ export default function Home() {
                 <section>
                   <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><span className="bg-indigo-600 px-2 py-0.5 rounded text-sm">Passo 1</span> App ID & App Secret</h3>
                   <ol className="list-decimal pl-5 space-y-2 text-sm leading-relaxed">
-                    <li>Vai su <a href="https://developers.facebook.com" target="_blank" className="text-indigo-400 hover:underline font-semibold">developers.facebook.com</a> e accedi col tuo account.</li>
-                    <li>Clicca su "Le mie app" in alto a destra e fai <strong>Crea un'app</strong>. Nella pagina successiva (<em>Aggiungi casi d'uso</em>), metti la spunta su <strong>Crea e gestisci le inserzioni con l'API Marketing</strong> e premi Avanti.</li>
-                    <li>Digita il nome dell'app. Una volta creata, nel menu a sinistra espandi <strong>Impostazioni dell'app</strong> &gt; clicca su <strong>Di base</strong>.</li>
-                    <li>Lì in alto troverai visibili il tuo <strong>App ID (ID App)</strong> e, cliccando su 'Mostra', l'<strong>App Secret (Segreto app)</strong>.</li>
+                    <li>Vai su <a href="https://developers.facebook.com" target="_blank" className="text-indigo-400 hover:underline font-semibold">developers.facebook.com</a> e accedi. Clicca "Le mie app" in alto a destra e premi <strong>Crea un'app</strong>.</li>
+                    <li>Scrivi il Nome dell'app (es. "Agente Meta").</li>
+                    <li>Nella schermata successiva <em>Casi d'uso</em>, spunta <strong>Crea e gestisci le inserzioni con l'API Marketing</strong> e premi Avanti.</li>
+                    <li>Nella schermata successiva <em>Azienda</em>, seleziona il tuo Business Manager principale a cui vuoi collegare l'app (es. ADpeople).</li>
+                    <li>Terminata la creazione, nel menu a sinistra espandi <strong>Impostazioni dell'app</strong> &gt; clicca su <strong>Di base</strong>. Lì troverai visibili il tuo <strong>App ID (ID App)</strong> e, premendo 'Mostra', l'<strong>App Secret (Segreto app)</strong>.</li>
                   </ol>
                 </section>
 
