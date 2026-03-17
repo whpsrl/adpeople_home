@@ -34,6 +34,7 @@ export default function Home() {
 
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [profiles, setProfiles] = useState<ClientProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string>("");
   const [openAiKey, setOpenAiKey] = useState("");
@@ -348,6 +349,14 @@ export default function Home() {
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
+                
+                <button 
+                  onClick={() => setShowTutorial(true)}
+                  className="w-full text-indigo-400 hover:text-indigo-300 text-sm font-medium flex items-center justify-center gap-2 mt-4 transition-colors p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20"
+                  type="button"
+                >
+                  <HelpCircle size={16} /> Non sai dove trovare queste chiavi Meta? Leggi la Guida Rapida
+                </button>
               </div>
 
               <div className="space-y-4 border-t border-slate-800 pt-4">
@@ -373,7 +382,7 @@ export default function Home() {
                       type="text" 
                       value={editingProfile.appId}
                       onChange={(e) => setEditingProfile({...editingProfile, appId: e.target.value})}
-                      placeholder="es. 1029384756"
+                      placeholder="Codice a 15-16 cifre (es. 1029384756123)"
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                     />
                   </div>
@@ -399,7 +408,7 @@ export default function Home() {
                       type="password" 
                       value={editingProfile.token}
                       onChange={(e) => setEditingProfile({...editingProfile, token: e.target.value})}
-                      placeholder="EAAI..."
+                      placeholder="EAAI... (Stringa alfanumerica lunghissima)"
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                     />
                   </div>
@@ -425,7 +434,7 @@ export default function Home() {
                       type="text" 
                       value={editingProfile.pageId || ""}
                       onChange={(e) => setEditingProfile({...editingProfile, pageId: e.target.value})}
-                      placeholder="es. 987654321"
+                      placeholder="Codice numerico lungo della Pagina (Info Pagina FB)"
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                     />
                   </div>
@@ -452,6 +461,76 @@ export default function Home() {
                 >
                   <Save size={18} /> Salva Profilo Meta
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Tutorial / Guide Modal */}
+      <AnimatePresence>
+        {showTutorial && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl"
+            >
+              <div className="flex justify-between items-center p-6 border-b border-slate-800 sticky top-0 bg-slate-900/95 backdrop-blur z-10">
+                <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                  <Target className="text-indigo-400" /> Guida: Come configurare Meta per le API?
+                </h2>
+                <button 
+                  onClick={() => setShowTutorial(false)}
+                  className="text-slate-400 hover:text-white transition-colors bg-slate-800 p-2 rounded-full"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-8 text-slate-300">
+                <section>
+                  <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><span className="bg-indigo-600 px-2 py-0.5 rounded text-sm">Passo 1</span> App ID & App Secret</h3>
+                  <ol className="list-decimal pl-5 space-y-2 text-sm leading-relaxed">
+                    <li>Vai su <a href="https://developers.facebook.com" target="_blank" className="text-indigo-400 hover:underline font-semibold">developers.facebook.com</a> e accedi col tuo account.</li>
+                    <li>Clicca su "Le mie app" in alto a destra e fai <strong>Crea un'app</strong> (Usa il caso d'uso: "Business").</li>
+                    <li>Una volta creata, nel menu a sinistra clicca su <strong>Impostazioni</strong> &gt; <strong>Di base</strong>.</li>
+                    <li>Lì in alto troverai visibili il tuo <strong>App ID (ID App)</strong> e, cliccando su 'Mostra', l'<strong>App Secret (Segreto app)</strong>.</li>
+                  </ol>
+                </section>
+
+                <section>
+                  <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><span className="bg-indigo-600 px-2 py-0.5 rounded text-sm">Passo 2</span> Access Token (Lunga durata)</h3>
+                  <p className="text-sm mb-2 text-slate-400">Dovrai autorizzare la tua App a toccare l'account pubblicitario tramite un token.</p>
+                  <ol className="list-decimal pl-5 space-y-2 text-sm leading-relaxed">
+                    <li>Sempre da developers.facebook.com, vai su <strong>Strumenti</strong> (menu in alto) &gt; <strong>Graph API Explorer</strong>.</li>
+                    <li>Nella colonna destra seleziona la tua App appena creata.</li>
+                    <li>Nel dropdown 'User or Page', seleziona <strong>Token d'accesso utente (Get User Access Token)</strong>.</li>
+                    <li>Aggiungi questi permessi: <code className="bg-slate-800 px-1 py-0.5 rounded text-emerald-400">ads_management</code>, <code className="bg-slate-800 px-1 py-0.5 rounded text-emerald-400">ads_read</code>, <code className="bg-slate-800 px-1 py-0.5 rounded text-emerald-400">pages_show_list</code></li>
+                    <li>Clicca su "Genera Access Token". Clicca l'icona 'Info/i' accanto alla stringa lunga, apri lo strumento e premi "Extendi Token" in basso per averne uno che non cede in 60 minuti. Quella mega-stringa EAAI... è il tuo <strong>Access Token</strong>.</li>
+                  </ol>
+                </section>
+
+                <section>
+                  <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><span className="bg-indigo-600 px-2 py-0.5 rounded text-sm">Passo 3</span> Ad Account ID & Page ID</h3>
+                  <ol className="list-decimal pl-5 space-y-2 text-sm leading-relaxed">
+                    <li>Apri il tuo <strong>Business Manager o Gestione Inserzioni</strong> di Facebook.</li>
+                    <li>Guardando l'URL in alto, troverai <code>act_123456789...</code> L'<strong>Ad Account ID</strong> sono esclusivamente i numeri successivi a "act_".</li>
+                    <li>Per il <strong>Page ID</strong>: Vai sulla tua pagina Facebook aziendale, su <em>Informazioni &gt; Trasparenza della Pagina</em>, o nella tab "Info", troverai "ID Pagina" in fondo.</li>
+                  </ol>
+                </section>
+                
+                <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4 mt-4">
+                  <p className="text-sm text-indigo-200">
+                    <strong>💡 Nota per le Agenzie SaaS:</strong> Se in futuro vuoi aggiungere un cliente, non cambierai l'App ID/Secret (quella è l'app della tua agenzia software), ma genererai un nuovo <strong>Access Token</strong> per il cliente (o lo farai generare a lui con un click di login) e inserirai qui il suo Ad Account e Page ID!
+                  </p>
+                </div>
               </div>
             </motion.div>
           </motion.div>
